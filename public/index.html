@@ -475,26 +475,136 @@
 
   /* ── RESPONSIVE ── */
   @media (max-width: 600px) {
-    .timeline::before { left: 20px; }
+    section {
+      padding: 40px 16px;
+      max-width: 100%;
+    }
+
+    .section-heading h2 { font-size: 1.8rem; margin-bottom: 24px; }
+    
+    .timeline { padding: 0 0 20px; }
+    .timeline::before { left: 16px; }
 
     .tl-item {
-      grid-template-columns: 40px 1fr;
-      grid-template-rows: auto auto;
+      grid-template-columns: 32px 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 0 12px;
+      margin-bottom: 28px;
+      max-width: 100%;
+      overflow: hidden;
     }
 
-    .tl-item:nth-child(odd)  .tl-content,
+    .tl-item:nth-child(odd) .tl-content,
     .tl-item:nth-child(even) .tl-content {
-      grid-column: 2; grid-row: 1;
+      grid-column: 2;
+      grid-row: 1;
       text-align: left;
+      max-width: calc(100vw - 60px);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
     }
 
-    .tl-item:nth-child(odd)  .tl-doodle,
+    .tl-item:nth-child(odd) .tl-doodle,
     .tl-item:nth-child(even) .tl-doodle {
-      grid-column: 2; grid-row: 2;
+      grid-column: 1 / 3;
+      grid-row: 2;
       justify-content: flex-start;
+      margin-top: 8px;
+      display: none;
     }
 
-    .tl-dot { grid-column: 1; grid-row: 1; margin: 6px auto 0; }
+    .tl-dot {
+      grid-column: 1;
+      grid-row: 1;
+      width: 14px;
+      height: 14px;
+      margin: 4px 0 0 0;
+      border: 2px solid var(--rose);
+      box-shadow: 0 0 0 3px rgba(232,165,152,.15);
+    }
+
+    .tl-date {
+      font-size: 0.65rem;
+      margin-bottom: 2px;
+      color: var(--mauve);
+    }
+
+    .tl-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .tl-desc {
+      font-size: 0.8rem;
+      color: var(--light-text);
+      line-height: 1.4;
+      margin: 0;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-wrap: break-word;
+      word-break: break-word;
+      max-width: 100%;
+    }
+
+    .add-memory-wrap { text-align: center; margin: 12px 0; }
+    .add-memory-btn { padding: 8px 20px; font-size: 0.9rem; }
+
+    .tl-photo {
+      margin-top: 8px;
+      max-width: 100%;
+      max-height: 120px;
+    }
+
+    .tl-actions {
+      margin-top: 6px;
+      gap: 4px;
+    }
+
+    .tl-btn {
+      padding: 2px 8px;
+      font-size: 0.65rem;
+    }
+
+    .tl-auto-badge {
+      font-size: 0.55rem;
+      padding: 1px 6px;
+      margin-bottom: 4px;
+    }
+
+    /* Family section adjustments */
+    .family-grid {
+      gap: 12px;
+      margin-top: 0;
+    }
+
+    .family-card {
+      width: 140px;
+      padding: 20px 16px;
+    }
+
+    .family-card .emoji { font-size: 2rem; margin-bottom: 6px; }
+    .family-card h3 { font-size: 0.95rem; }
+    .family-card p { font-size: 0.7rem; }
+
+    /* Love note section */
+    .love-note-section {
+      padding: 40px 16px 60px;
+    }
+
+    .love-note {
+      font-size: 1.1rem;
+      padding: 20px 24px;
+    }
+
+    .love-note::before {
+      font-size: 3.5rem;
+      top: -5px;
+      left: 8px;
+    }
   }
 
   /* ── TIMELINE EDIT CONTROLS ── */
@@ -1493,8 +1603,8 @@ function loadFramePhoto() {
     });
 }
 
-// Initialize and load memories
-loadMemories().then(function() {
+// Initialize and load memories and frame photo
+Promise.all([loadMemories(), loadFramePhotoFromServer()]).then(function() {
   sortMemories();
   buildTimeline();
   document.querySelectorAll('.family-card').forEach(function(el) { observer.observe(el); });
@@ -1816,7 +1926,22 @@ function displayFramePhoto(src) {
   photoPlaceholder.style.display = 'none';
   editPhotoMiniBtn.style.display = 'flex';
   deletePhotoMiniBtn.style.display = 'flex';
-  localStorage.setItem('framePhoto', src);
+  saveFramePhoto(src);
+}
+
+function loadFramePhotoFromServer() {
+  return fetch(API_URL + '/settings/framePhoto')
+    .then(r => r.json())
+    .then(function(result) {
+      if (result.value) {
+        displayFramePhoto(result.value);
+      }
+      return result.value;
+    })
+    .catch(function(e) {
+      console.warn('Failed to load frame photo:', e);
+      return null;
+    });
 }
 
 function closePhotoModal() {
@@ -1828,14 +1953,6 @@ function openPhotoModal() {
   photoModalTitle.textContent = framePhoto.src ? 'Edit Photo' : 'Upload Photo';
   photoModal.classList.add('open');
 }
-
-// Load saved photo on page load
-window.addEventListener('load', function() {
-  var saved = localStorage.getItem('framePhoto');
-  if (saved) {
-    displayFramePhoto(saved);
-  }
-});
 
 uploadPhotoBtn.addEventListener('click', openPhotoModal);
 document.getElementById('photoModalClose').addEventListener('click', closePhotoModal);
@@ -1871,7 +1988,7 @@ deletePhotoMiniBtn.addEventListener('click', function() {
     photoPlaceholder.style.display = 'flex';
     editPhotoMiniBtn.style.display = 'none';
     deletePhotoMiniBtn.style.display = 'none';
-    localStorage.removeItem('framePhoto');
+    saveFramePhoto(null);
   }
 });
 
